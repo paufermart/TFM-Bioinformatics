@@ -35,6 +35,8 @@ library(scales)
 library(dplyr)
 library(e1071)
 library(survivalsvm)
+library(kableExtra)
+library(compareC)
 
 # Carga de datos
 lake <- read_delim("~/Máster Bioinformática/TFM/DATOS/lake.csv", 
@@ -249,7 +251,6 @@ rf_1 <- rfsrc(Surv(tiempo, status) ~ .,
 rf_1
 
 
-#' Obtenemos un error de predicción de `r round(get.cindex(train_forest$tiempo, train_forest$status, rf_1$predicted.oob),4)`.
 #' Representamos la estimación del error de predicción en función del número de árboles en el bosque:
 #' 
 plot(gg_error(rf_1)) 
@@ -262,14 +263,16 @@ rf_test <- predict(rf_1, newdata = test_forest, na.action = "na.impute", importa
 rf_test
 
 plot(gg_error(rf_test)) 
-#' Ahora se ha reducido a `r round(get.cindex(test_forest$tiempo, test_forest$status, rf_test$predicted),4)`.
+
+c_100rf <- compareC::estC(test_forest$tiempo, test_forest$status, rf_test$predicted)
+
 #' 
 #' También podemos representar qué variables son las que más influyen en los resultados: en azul aparecen las variables que reducen
 #' el error y en rojo las que lo aumentan.
 #' 
 plot(gg_vimp(rf_test))
 #'
-#' El índice C de Harrell para este modelo es: `r round(1-get.cindex(test_forest$tiempo, test_forest$status, rf_test$predicted),4)`
+#' El índice C de Harrell para este modelo es: `r round(c_100rf,4)`
 #' 
 #' Repetimos el modelo pero aumentando el número de árboles:
 #' 
@@ -281,18 +284,20 @@ rf_2 <- rfsrc(Surv(tiempo, status) ~ .,
 
 rf_2
 
+plot(gg_error(rf_2))
+
 rf_test2 <- predict(rf_2, newdata = test_forest, na.action = "na.impute", importance = TRUE)
 
 rf_test2
 
-plot(gg_error(rf_test2)) #el error se redujo
+plot(gg_error(rf_test2))
 
 plot(gg_vimp(rf_test2))
 
-#' Obtenemos un error de predicción de `r round(get.cindex(train_forest$tiempo, train_forest$status, rf_2$predicted.oob),4)` para el
-#' conjunto de entrenamiento, y de `r round(get.cindex(test_forest$tiempo, test_forest$status, rf_test$predicted),4)` para el test.
+c_300rf <- compareC::estC(test_forest$tiempo, test_forest$status, rf_test2$predicted)
+
 #' 
-#' Ahora el índice C es `r round(1-get.cindex(test_forest$tiempo, test_forest$status, rf_test2$predicted),4)`.
+#' Ahora el índice C es `r round(c_300rf,4)`.
 #' 
 #' ## Naive Bayes
 #' 
@@ -308,9 +313,9 @@ bayes_lap0_pred <- predict(bayes_lap0_model, test)
 train_labels <- Surv(train$tiempo, train$status)
 test_labels <- as.factor(Surv(test$tiempo,test$status))
 
-get.cindex(test$tiempo, test$status, bayes_lap0_pred)
+c_nb0 <- compareC::estC(test$tiempo, test$status, bayes_lap0_pred)
 
-#' Obtenemos un índice C de `r round(get.cindex(test$tiempo, test$status, bayes_lap0_pred),4)`.
+#' Obtenemos un índice C de `r round(c_nb0,4)`.
 #' 
 #' ### Laplace 1
 #' 
@@ -319,9 +324,9 @@ bayes_lap1_model <- naiveBayes(Surv(tiempo,status) ~ ., data=train, laplace=1, n
 summary(bayes_lap1_model)
 bayes_lap1_pred <- predict(bayes_lap1_model, test)
 
-get.cindex(test$tiempo, test$status, bayes_lap1_pred)
+c_nb1 <- compareC::estC(test$tiempo, test$status, bayes_lap1_pred)
 
-#' Obtenemos un índice C de `r round(get.cindex(test$tiempo, test$status, bayes_lap1_pred),4)`.
+#' Obtenemos un índice C de `r round(c_nb1,4)`.
 #' 
 #' 
 #' ## Support Vector Machine 
@@ -353,9 +358,9 @@ pred_surv_lin <- predict(surv_lin, newdata = test_svm)
 
 print(pred_surv_lin)
 
-conindex(pred_surv_lin, test_svm$tiempo)
+c_svmlin <- compareC::estC(test_svm$tiempo, test_svm$status, pred_surv_lin$predicted)
 
-#' Obtenemos una C de `r round(conindex(pred_surv_lin, test_svm$tiempo),4)`
+#' Obtenemos una C de `r round(c_svmlin,4)`
 #'
 #' ### Kernel radial
 
@@ -370,17 +375,17 @@ pred_surv_rbf <- predict(surv_rbf, test_svm)
 
 print(pred_surv_rbf)
 
-conindex(pred_surv_rbf, test_svm$tiempo)
+c_svmrbf <- compareC::estC(test_svm$tiempo, test_svm$status, pred_surv_rbf$predicted)
 
-#' Obtenemos una C de `r round(conindex(pred_surv_rbf, test_svm$tiempo),4)`
+#' Obtenemos una C de `r round(c_svmrbf,4)`
 #' 
 #' ### Kernel aditivo
 #' 
 
 surv_add <- survivalsvm(Surv(tiempo, status) ~.,
-                        data = train_svm [,2:39],
+                        data = train_svm[,2:39],
                         type = "regression", gamma.mu = 1,
-                        opt.meth = "quadprog", kernel = "add_kernel") #eliminamos la columna 23
+                        opt.meth = "quadprog", kernel = "add_kernel")
 
 print(surv_add)
 
@@ -390,6 +395,27 @@ print(pred_surv_add)
 
 conindex(pred_surv_add, test_svm$tiempo)
 
-#' Obtenemos una C de `r round(conindex(pred_surv_add, test_svm$tiempo),4)`
-#' 
+c_svmadd <- compareC::estC(test_svm$tiempo, test_svm$status, pred_surv_add$predicted)
 
+#' Obtenemos una C de `r round(c_svmadd,4)`
+#' 
+#' # Resumen de los resultados
+#' 
+#' En la siguiente tabla se muestran los valores de C para los diferentes algoritmos:
+#' 
+c_values <- data.frame(names = c("Árbol de Supervivencia n = 100", "Árbol de supervivencia n = 300",
+                                 "Naive Bayes L = 0", "Naive Bayes L = 1",
+                                 "SVM Lineal", "SVM RBF", "SVM Aditivo"),
+                       values = c(c_100rf, c_300rf, c_nb0, c_nb1, c_svmlin, c_svmrbf, c_svmadd))
+
+kable(c_values, caption = "Resumen de los valores de C para todos los algoritmos", 
+    col.names = c("Algoritmo", "C-Index"),
+    digits = 4,
+    format = "html", table.attr = "style='width:100%;'", align = "c") %>%
+  kable_styling(bootstrap_options = c("striped", "hover","condensed"))
+
+max_c <- max(c_values$values)
+
+#' El algoritmo con mayor valor de C es `r c_values[c_values$values == max_c,][[1]]`, con un índice C de `r round(max_c,4)`.
+#' 
+#' 
