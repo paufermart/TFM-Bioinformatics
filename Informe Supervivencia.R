@@ -180,9 +180,9 @@ gg <- ggplot(long_cv2, aes(x = Carga_viral, y = perc*100, fill = value)) +
   ylim(0,100) +
   labs(y = "%", x = "Semana", fill = "Carga viral")
 
-ggtoppt(gg)
-
-ggtoppt(export = TRUE, "graficos.pptx")
+# ggtoppt(gg)
+# 
+# ggtoppt(export = TRUE, "graficos.pptx")
 
 #' Generamos unas curvas de Kaplan Meier para ver cómo funcionan los modelos tradicionales.
 #' 
@@ -197,6 +197,7 @@ ggsurvplot(sur1,
            linetype = "strata",
            break.time.by = 12,
            xlab = "Semanas",
+           conf.int = TRUE,
            title = "Todos")
 
 #' Y otra por grupos:
@@ -210,6 +211,7 @@ ggsurvplot(sur2,
            surv.median.line = "hv", 
            pval = TRUE, 
            break.time.by = 12, 
+           conf.int = TRUE,
            xlab = "Semanas",
            title = "")
 
